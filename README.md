@@ -1,6 +1,6 @@
 # Active-NLP
 
-Implementation of different acquisition functions for NER, classification and SRL task. (Machine Translation in progress). I ll soon add a proper readme file (this weekend). For now, You can peek into train_ner.py/active_ner.py and figure out arguments according to help in argparse.
+Partly refer [Active-NLP](https://github.com/asiddhant/Active-NLP)
 
 For example to run a CNN_BiLSTM_CRF model on Conll dataset on full dataset, you can run
 
