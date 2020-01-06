@@ -12,8 +12,10 @@ from neural_ner.models import CNN_CNN_LSTM_BB
 import matplotlib.pyplot as plt
 import torch
 from active_learning import Acquisition
-import cPickle as pkl
+# import cPickle as pkl
+import _pickle as pkl
 import numpy as np
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 import argparse
 
@@ -25,9 +27,9 @@ parser.add_argument('--result_path', action='store', dest='result_path', default
                     type=str, help='Path to Save/Load Result')
 parser.add_argument('--usemodel', default='CNN_BiLSTM_CRF', type=str, dest='usemodel',
                     help='Model to Use')
-parser.add_argument('--worddim', default=100, type=int, dest='worddim',
+parser.add_argument('--worddim', default=300, type=int, dest='worddim',
                     help="Word Embedding Dimension")
-parser.add_argument('--pretrnd', default="wordvectors/glove.6B.100d.txt", type=str, dest='pretrnd',
+parser.add_argument('--pretrnd', default="wordvectors/glove.6B.300d.txt", type=str, dest='pretrnd',
                     help="Location of pretrained embeddings")
 parser.add_argument('--reload', default=0, type=int, dest='reload',
                     help="Reload the last saved model")
@@ -196,7 +198,7 @@ avail_budget = total_tokens
 
 print('Building Model............................................................................')
 if (model_name == 'CNN_BiLSTM_CRF'):
-    print ('CNN_BiLSTM_CRF')
+    print('CNN_BiLSTM_CRF')
     word_vocab_size = len(word_to_id)
     word_embedding_dim = parameters['wrdim']
     word_hidden_dim = parameters['wldim']
@@ -208,7 +210,7 @@ if (model_name == 'CNN_BiLSTM_CRF'):
                            char_embedding_dim, char_out_channels, tag_to_id, pretrained = word_embeds)
 
 elif (model_name == 'CNN_BiLSTM_CRF_MC'):
-    print ('CNN_BiLSTM_CRF_MC')
+    print('CNN_BiLSTM_CRF_MC')
     word_vocab_size = len(word_to_id)
     word_embedding_dim = parameters['wrdim']
     word_hidden_dim = parameters['wldim']
@@ -277,10 +279,10 @@ elif (model_name == 'CNN_CNN_LSTM_BB'):
                                 tag_to_id, sigma_prior = sigma_prior, pretrained = word_embeds)
 
 if model_load:
-    print ('Loading Saved Data points....................................................................')
+    print('Loading Saved Data points....................................................................')
     acquisition_path = os.path.join(result_path, model_name, 'active_checkpoint', acquire_method,
-                                    checkpoint, 'acquisition2.p')
-    acquisition_function = pkl.load(open(acquisition_path,'rb'))
+                                    checkpoint, 'acquisition2.p').replace('\\', '/')
+    acquisition_function = pkl.load(open(acquisition_path, 'rb'))
     
 else:       
     acquisition_function = Acquisition(train_data, init_percent=init_percent, seed=0, 
@@ -290,7 +292,7 @@ model.cuda()
 learning_rate = parameters['lrate']
 optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate, momentum=0.9)
 
-trainer = Trainer(model, optimizer, result_path, model_name, usedataset=opt.dataset, mappings= mappings)
+trainer = Trainer(model, optimizer, result_path, model_name, usedataset=opt.dataset, mappings=mappings)
 
 active_train_data = [train_data[i] for i in acquisition_function.train_index]
 tokens_acquired = sum([len(x['words']) for x in active_train_data])
@@ -301,33 +303,33 @@ acquisition_strat = acquisition_strat_all[:num_acquisitions_required]
 
 for acquire_percent in acquisition_strat:
     
-    checkpoint_folder = os.path.join('active_checkpoint',acquire_method, str(tokens_acquired).zfill(8))
-    checkpoint_path = os.path.join(result_path, model_name, checkpoint_folder)
+    checkpoint_folder = os.path.join('active_checkpoint', acquire_method, str(tokens_acquired).zfill(8)).replace('\\', '/')
+    checkpoint_path = os.path.join(result_path, model_name, checkpoint_folder).replace('\\', '/')
     if not os.path.exists(checkpoint_path):
         os.makedirs(checkpoint_path)
         
     acq_plot_every = max(len(acquisition_function.train_index)/(5*parameters['batch_size']),1)
     losses, all_F = trainer.train_model(opt.num_epochs, active_train_data, dev_data, test_train_data, test_data,
-                                        learning_rate = learning_rate, checkpoint_folder = checkpoint_folder,
-                                        batch_size = min(parameters['batch_size'],len(acquisition_function.train_index)/100),
-                                        eval_test_train=False, plot_every = acq_plot_every, lr_decay = 0.05)
+                                        learning_rate=learning_rate, checkpoint_folder=checkpoint_folder,
+                                        # batch_size=min(parameters['batch_size'],len(acquisition_function.train_index)/100),
+                                        batch_size=parameters['batch_size'],
+                                        eval_test_train=False, plot_every=acq_plot_every, lr_decay=0.05)
     
-    pkl.dump(acquisition_function, open(os.path.join(checkpoint_path,'acquisition1.p'),'wb'))
+    pkl.dump(acquisition_function, open(os.path.join(checkpoint_path, 'acquisition1.p').replace('\\', '/'), 'wb'))
+    acquisition_function.obtain_data(model_path=os.path.join(checkpoint_path, 'modelweights').replace('\\', '/'), model_name=model_name,
+                                     data=train_data, acquire=acquire_percent, method=acquire_method)
     
-    acquisition_function.obtain_data(model_path = os.path.join(checkpoint_path ,'modelweights'), model_name = model_name,
-                                     data = train_data, acquire = acquire_percent, method=acquire_method)
+    pkl.dump(acquisition_function, open(os.path.join(checkpoint_path, 'acquisition2.p').replace('\\', '/'), 'wb'))
     
-    pkl.dump(acquisition_function, open(os.path.join(checkpoint_path,'acquisition2.p'),'wb'))
-    
-    print ('*'*80)
+    print('*'*80)
     saved_epoch = np.argmax(np.array([item[1] for item in all_F]))
-    print ('Budget Exhausted: %d, Best F on Validation %.3f, Best F on Test %.3f' %(tokens_acquired,
+    print('Budget Exhausted: %d, Best F on Validation %.3f, Best F on Test %.3f' % (tokens_acquired,
                                         all_F[saved_epoch][1], all_F[saved_epoch][2]))
-    print ('*'*80)
+    print('*'*80)
     
     active_train_data = [train_data[i] for i in acquisition_function.train_index]
     tokens_acquired = sum([len(x['words']) for x in active_train_data])
     
     plt.clf()
     plt.plot(losses)
-    plt.savefig(os.path.join(checkpoint_path,'lossplot.png'))
+    plt.savefig(os.path.join(checkpoint_path, 'lossplot.png').replace('\\', '/'))

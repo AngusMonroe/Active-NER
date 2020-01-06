@@ -8,13 +8,14 @@ from scipy import stats
 from neural_ner.util.utils import *
 import pandas as pd
 
+
 class Acquisition(object):
     
     def __init__(self, train_data, acq_mode='d', init_percent=2, seed=0, usecuda = True):
         self.tokenlen = sum([len(x['words']) for x in train_data])
         self.train_index = set()
         self.npr = np.random.RandomState(seed)
-        self.obtain_data(train_data, acquire = init_percent)
+        self.obtain_data(train_data, acquire=init_percent)
         self.acq_mode = acq_mode
         self.usecuda = usecuda
         
@@ -27,10 +28,10 @@ class Acquisition(object):
             if test_indices[i] not in self.train_index:
                 cur_indices.add(test_indices[i])
                 cur_tokens += len(data[test_indices[i]]['words'])
-            i+=1
+            i += 1
         self.train_index.update(cur_indices)
                  
-    def get_mnlp(self, dataset, model_path, decoder, num_tokens, batch_size = 50):
+    def get_mnlp(self, dataset, model_path, decoder, num_tokens, batch_size=50):
         
         model = torch.load(model_path)
         model.train(False)
@@ -40,8 +41,8 @@ class Acquisition(object):
         new_dataset = [datapoint for j,datapoint in enumerate(dataset) if j not in self.train_index]
         new_datapoints = [j for j in range(len(dataset)) if j not in self.train_index]
         
-        data_batches = create_batches(new_dataset, batch_size = batch_size, str_words = True,
-                                      tag_padded = False)
+        data_batches = create_batches(new_dataset, batch_size=batch_size, str_words=True,
+                                      tag_padded=False)
         probscores = []
         for data in data_batches:
 
@@ -154,17 +155,17 @@ class Acquisition(object):
         probsmean = np.mean(probs, axis = 1)
         test_indices = np.lexsort((probsmean, varsc))
                 
-        cur_tokens=0
+        cur_tokens = 0
         cur_indices = set()
         i = 0
-        while cur_tokens<num_tokens:
+        while cur_tokens < num_tokens:
             cur_indices.add(test_indices[i])
             cur_tokens += len(dataset[test_indices[i]]['words'])
             i+=1
         self.train_index.update(cur_indices)
         
         print ('*'*80)
-        print ('MC Acquisition took %d seconds:' %(time.time()-tm))
+        print ('MC Acquisition took %d seconds:' % (time.time()-tm))
         print ('*'*80)
         
     def get_mnlp_bb(self, dataset, model_path, decoder, num_tokens, nsamp=100, batch_size = 50):
@@ -243,9 +244,9 @@ class Acquisition(object):
             i+=1
         self.train_index.update(cur_indices)
         
-        print ('*'*80)
-        print ('MC Acquisition took %d seconds:' %(time.time()-tm))
-        print ('*'*80)
+        print('*'*80)
+        print('MC Acquisition took %d seconds:' %(time.time()-tm))
+        print('*'*80)
         
     def obtain_data(self, data, model_path=None, model_name=None, acquire=2, method='random', num_samples=100):
         
@@ -254,22 +255,22 @@ class Acquisition(object):
         if model_path is None or model_name is None:
             method = 'random'
         
-        if method=='random':
+        if method == 'random':
             self.get_random(data, num_tokens)
         else:
             decoder = model_name.split('_')[2]
             if self.acq_mode == 'd':
-                if method=='mnlp':
+                if method == 'mnlp':
                     self.get_mnlp(data, model_path, decoder, num_tokens)
                 else:
                     raise NotImplementedError()
             elif self.acq_mode == 'm':
-                if method=='mnlp':
+                if method == 'mnlp':
                     self.get_mnlp_mc(data, model_path, decoder, num_tokens, nsamp = num_samples)
                 else:
                     raise NotImplementedError()
             elif self.acq_mode == 'b':
-                if method=='mnlp':
+                if method == 'mnlp':
                     self.get_mnlp_bb(data, model_path, decoder, num_tokens, nsamp = num_samples)
                 else:
                     raise NotImplementedError()

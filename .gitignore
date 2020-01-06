@@ -130,3 +130,5 @@ dmypy.json
 *.xlsx
 *.xls
 datasets/conll
+wordvectors/glove.6B.300d.txt
+neural_ner/results

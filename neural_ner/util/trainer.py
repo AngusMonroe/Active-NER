@@ -14,11 +14,11 @@ from .utils import *
 class Trainer(object):
     
     def __init__(self, model, optimizer, result_path, model_name, usedataset, mappings, 
-                 eval_every=1, usecuda = True):
+                 eval_every=1, usecuda=True):
         self.model = model
         self.optimizer = optimizer
         self.eval_every = eval_every
-        self.model_name = os.path.join(result_path, model_name)
+        self.model_name = os.path.join(result_path, model_name).replace('\\', '/')
         self.usecuda = usecuda
         
         self.evaluator = Evaluator(result_path, model_name, mappings).evaluate_conll
@@ -29,7 +29,7 @@ class Trainer(object):
             
     def train_model(self, num_epochs, train_data, dev_data, test_train_data, test_data, learning_rate,
                     checkpoint_folder='.', eval_test_train=True, plot_every=50, adjust_lr=True,
-                    batch_size = 16, lr_decay = 0.05):
+                    batch_size=16, lr_decay=0.05):
 
         losses = []
         loss = 0.0
@@ -42,9 +42,8 @@ class Trainer(object):
         
         self.model.train(True)
         for epoch in range(1, num_epochs+1):
-            t=time.time()
-            
-            train_batches = create_batches(train_data, batch_size= batch_size, order='random')
+            t = time.time()
+            train_batches = create_batches(train_data, batch_size=batch_size, order='random')
             n_batches = len(train_batches)
             
             for i, index in enumerate(np.random.permutation(len(train_batches))): 
@@ -74,10 +73,9 @@ class Trainer(object):
                 wordslen = data['wordslen']
                 charslen = data['charslen']
                 
-                score = self.model(words, tags, chars, caps, wordslen, charslen, mask, n_batches,
-                                         usecuda=self.usecuda)
+                score = self.model(words, tags, chars, caps, wordslen, charslen, mask, n_batches)
                 
-                loss += score.data[0]/np.sum(data['wordslen'])
+                loss += score.data.item()/np.sum(data['wordslen'])
                 score.backward()
                 
                 nn.utils.clip_grad_norm(self.model.parameters(), 5.0)
@@ -97,7 +95,7 @@ class Trainer(object):
             if adjust_lr:
                 self.adjust_learning_rate(self.optimizer, lr=learning_rate/(1+lr_decay*float(word_count)/len(train_data)))
             
-            if epoch%self.eval_every==0:
+            if epoch % self.eval_every == 0:
                 
                 self.model.train(False)
                 
@@ -109,7 +107,8 @@ class Trainer(object):
                 best_dev_F, new_dev_F, save = self.evaluator(self.model, dev_data, best_dev_F,
                                                              checkpoint_folder=checkpoint_folder)
                 if save:
-                    torch.save(self.model, os.path.join(self.model_name, checkpoint_folder, 'modelweights'))
+                    print('Saving...')
+                    torch.save(self.model, os.path.join(self.model_name, checkpoint_folder, 'modelweights').replace('\\', '/'))
                 best_test_F, new_test_F, _ = self.evaluator(self.model, test_data, best_test_F,
                                                             checkpoint_folder=checkpoint_folder)
                 sys.stdout.flush()
@@ -119,6 +118,6 @@ class Trainer(object):
                 self.model.train(True)
 
             print('*'*80)
-            print('Epoch %d Complete: Time Taken %d' %(epoch ,time.time() - t))
+            print('Epoch %d Complete: Time Taken %d' % (epoch, time.time() - t))
 
         return losses, all_F

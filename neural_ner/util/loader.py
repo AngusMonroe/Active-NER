@@ -7,7 +7,7 @@ from torch.nn import init
 from torch.autograd import Variable
 from .utils import *
 import codecs
-import cPickle
+import _pickle
 import itertools
 
 class Loader(object):
@@ -93,7 +93,7 @@ class Loader(object):
                 sentences.append(sentence)
         return sentences
     
-    def load_conll(self, dataset ,parameters):
+    def load_conll(self, dataset, parameters):
         
         zeros = parameters['zeros']
         lower = parameters['lower']
@@ -101,10 +101,10 @@ class Loader(object):
         pretrained = parameters['ptrnd']
         tag_scheme = parameters['tgsch']
         
-        train_path = os.path.join(dataset,'eng.train')
-        dev_path = os.path.join(dataset,'eng.testa')
-        test_path = os.path.join(dataset,'eng.testb')
-        test_train_path = os.path.join(dataset,'eng.train54019')
+        train_path = os.path.join(dataset, 'eng.train').replace('\\', '/')
+        dev_path = os.path.join(dataset, 'eng.testa').replace('\\', '/')
+        test_path = os.path.join(dataset, 'eng.testb').replace('\\', '/')
+        test_train_path = os.path.join(dataset, 'eng.train54019').replace('\\', '/')
         
         train_sentences = self.load_conll_sentences(train_path, lower, zeros)
         dev_sentences = self.load_conll_sentences(dev_path, lower, zeros)
@@ -137,7 +137,7 @@ class Loader(object):
         print("%i / %i / %i sentences in train / dev / test." % (
               len(train_data), len(dev_data), len(test_data)))
         
-        mapping_file = os.path.join(dataset,'mapping_'+ str(tag_scheme) +'.pkl')
+        mapping_file = os.path.join(dataset, 'mapping_' + str(tag_scheme) + '.pkl').replace('\\', '/')
         
         if not os.path.isfile(mapping_file):
             all_word_embeds = {}
@@ -165,9 +165,9 @@ class Loader(object):
                     'parameters': parameters,
                     'word_embeds': word_embeds
                 }
-                cPickle.dump(mappings, f)
+                _pickle.dump(mappings, f)
         else:
-            mappings = cPickle.load(open(mapping_file,'rb'))
+            mappings = _pickle.load(open(mapping_file,'rb'))
             
         return train_data, dev_data, test_data, test_train_data, mappings
         
@@ -179,9 +179,9 @@ class Loader(object):
         pretrained = parameters['ptrnd']
         tag_scheme = parameters['tgsch']
         
-        train_path = os.path.join(dataset,'eng.train')
-        dev_path = os.path.join(dataset,'eng.testa')
-        test_path = os.path.join(dataset,'eng.testb')
+        train_path = os.path.join(dataset, 'eng.train').replace('\\', '/')
+        dev_path = os.path.join(dataset, 'eng.testa').replace('\\', '/')
+        test_path = os.path.join(dataset, 'eng.testb').replace('\\', '/')
         
         train_sentences = self.load_conll_sentences(train_path, lower, zeros)
         dev_sentences = self.load_conll_sentences(dev_path, lower, zeros)
@@ -211,7 +211,7 @@ class Loader(object):
         print("%i / %i / %i sentences in train / dev / test." % (
               len(train_data), len(dev_data), len(test_data)))
         
-        mapping_file = os.path.join(dataset,'mapping.pkl')
+        mapping_file = os.path.join(dataset, 'mapping.pkl').replace('\\', '/')
         
         if not os.path.isfile(mapping_file):
             all_word_embeds = {}
@@ -239,9 +239,9 @@ class Loader(object):
                     'parameters': parameters,
                     'word_embeds': word_embeds
                 }
-                cPickle.dump(mappings, f)
+                _pickle.dump(mappings, f)
         else:
-            mappings = cPickle.load(open(mapping_file,'rb'))
+            mappings = _pickle.load(open(mapping_file,'rb'))
             
         return train_data, dev_data, test_data, mappings
         

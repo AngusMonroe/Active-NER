@@ -14,15 +14,16 @@ class Evaluator(object):
         self.usecuda = usecuda
 
     def evaluate_conll(self, model, dataset, best_F, eval_script='./datasets/conll/conlleval',
-                          checkpoint_folder='.', record_confmat = False, batch_size = 32):
+                          checkpoint_folder='.', record_confmat=False, batch_size=32):
+        print('Evaluating...')
         
         prediction = []
         save = False
         new_F = 0.0
         confusion_matrix = torch.zeros((len(self.tag_to_id) - 2, len(self.tag_to_id) - 2))
     
-        data_batches = create_batches(dataset, batch_size = batch_size, str_words = True,
-                                      tag_padded = False)
+        data_batches = create_batches(dataset, batch_size=batch_size, str_words = True,
+                                      tag_padded=False)
 
         for data in data_batches:
 
@@ -59,13 +60,13 @@ class Evaluator(object):
                     confusion_matrix[true_id, pred_id] += 1
                 prediction.append('')
 
-        predf = os.path.join(self.result_path, self.model_name, checkpoint_folder ,'pred.txt')
-        scoref = os.path.join(self.result_path, self.model_name, checkpoint_folder ,'score.txt')
+        predf = os.path.join(self.result_path, self.model_name, checkpoint_folder, 'pred.txt').replace('\\', '/')
+        scoref = os.path.join(self.result_path, self.model_name, checkpoint_folder, 'score.txt').replace('\\', '/')
 
         with open(predf, 'wb') as f:
             f.write('\n'.join(prediction).encode('utf-8'))
 
-        os.system('%s < %s > %s' % (eval_script, predf, scoref))
+        os.system('perl %s < %s > %s' % (eval_script, predf, scoref))
 
         eval_lines = [l.rstrip() for l in codecs.open(scoref, 'r', 'utf8')]
 

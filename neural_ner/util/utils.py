@@ -22,8 +22,8 @@ def get_name(parameters):
             l.append((k, v[::-1][:v[::-1].index('/')][::-1]))
         else:
             l.append((k, v))
-    name = ",".join(["%s=%s" % (k, str(v).replace(',', '')) for k, v in l])
-    return "".join(i for i in name if i not in "\/:*?<>|")
+    name = ",".join(["%s=%s" % (k, str(v).replace(',', '')) for k, v in l]).replace('\\', '/')
+    return "".join(i for i in name if i not in "\/:*?<>|").replace('\\', '/')
 
 
 def set_values(name, param, pretrained):
@@ -331,13 +331,16 @@ def pad_seq(seq, max_length, PAD_token=0):
     
     seq += [PAD_token for i in range(max_length - len(seq))]
     return seq
-    
+
+
 def to_scalar(var):
     return var.view(-1).data.tolist()[0]
+
 
 def argmax(vec):
     _, idx = torch.max(vec, 1)
     return to_scalar(idx)
+
 
 def log_sum_exp(vec, dim=-1, keepdim = False):
     max_score, _ = vec.max(dim, keepdim=keepdim)
@@ -348,20 +351,28 @@ def log_sum_exp(vec, dim=-1, keepdim = False):
     output = max_score + (stable_vec.exp().sum(dim, keepdim=keepdim)).log()
     return output
 
-def create_batches(dataset, batch_size, order='keep', str_words=False, tag_padded= True):
+
+def create_batches(dataset, batch_size, order='keep', str_words=False, tag_padded=True):
 
     newdata = copy.deepcopy(dataset)
-    if order=='sort':
-        newdata.sort(key = lambda x:len(x['words']))
-    elif order=='random':
+    if order == 'sort':
+        newdata.sort(key=lambda x: len(x['words']))
+    elif order == 'random':
         random.shuffle(newdata)
 
     newdata = np.array(newdata)  
     batches = []
+
     num_batches = np.ceil(len(dataset)/float(batch_size)).astype('int')
 
     for i in range(num_batches):
-        batch_data = newdata[(i*batch_size):min(len(dataset),(i+1)*batch_size)]
+        try:
+            batch_data = newdata[(i*batch_size):min(len(dataset), (i+1)*batch_size)]
+        except TypeError:
+            print(i)
+            print(batch_size)
+            print(len(dataset))
+            raise KeyError
 
         words_seqs = [itm['words'] for itm in batch_data]
         caps_seqs = [itm['caps'] for itm in batch_data]
