@@ -15,8 +15,6 @@ from active_learning import Acquisition
 # import cPickle as pkl
 import _pickle as pkl
 import numpy as np
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
-
 import argparse
 
 parser = argparse.ArgumentParser()
@@ -41,6 +39,8 @@ parser.add_argument('--initdata', default=2, type=int, dest='initdata',
                     help="Percentage of Data to being with")
 parser.add_argument('--acquiremethod', default='random', type=str, dest='acquiremethod',
                     help="Percentage of Data to Acquire from Rest of Training Set")
+parser.add_argument('--gpu', default=0, type=int, dest='gpu',
+                    help="Set GPU Number")
 
 parameters = OrderedDict()
 
@@ -49,6 +49,9 @@ opt = parser.parse_args()
 parameters['model'] = opt.usemodel
 parameters['wrdim'] = opt.worddim
 parameters['ptrnd'] = opt.pretrnd
+parameters['gpu'] = opt.gpu
+
+os.environ["CUDA_VISIBLE_DEVICES"] = str(parameters['gpu'])
 
 if opt.usemodel == 'CNN_BiLSTM_CRF':
     parameters['lower'] = 1
@@ -197,7 +200,7 @@ total_tokens = sum([len(x['words']) for x in train_data])
 avail_budget = total_tokens
 
 print('Building Model............................................................................')
-if (model_name == 'CNN_BiLSTM_CRF'):
+if model_name == 'CNN_BiLSTM_CRF':
     print('CNN_BiLSTM_CRF')
     word_vocab_size = len(word_to_id)
     word_embedding_dim = parameters['wrdim']

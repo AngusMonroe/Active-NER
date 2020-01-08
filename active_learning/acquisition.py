@@ -21,10 +21,10 @@ class Acquisition(object):
         
     def get_random(self, data, num_tokens):
         test_indices = self.npr.permutation(len(data))
-        cur_tokens=0
+        cur_tokens = 0
         cur_indices = set()
         i = 0
-        while cur_tokens<num_tokens:
+        while cur_tokens < num_tokens:
             if test_indices[i] not in self.train_index:
                 cur_indices.add(test_indices[i])
                 cur_tokens += len(data[test_indices[i]]['words'])
@@ -66,8 +66,8 @@ class Acquisition(object):
             charslen = data['charslen']
             sort_info = data['sort_info']
             
-            score = model.decode(words, chars, caps, wordslen, charslen, mask, usecuda = self.usecuda,
-                                 score_only = True)
+            score = model.decode(words, chars, caps, wordslen, charslen, mask, usecuda=self.usecuda,
+                                 score_only=True)
             
             norm_scores = score/np.array(wordslen)
             assert len(norm_scores) == len(words)
@@ -77,16 +77,16 @@ class Acquisition(object):
         probs[new_datapoints] = np.array(probscores)
         
         test_indices = np.argsort(probs)
-        cur_tokens=0
+        cur_tokens = 0
         cur_indices = set()
         i = 0
-        while cur_tokens<num_tokens:
+        while cur_tokens < num_tokens:
             cur_indices.add(test_indices[i])
             cur_tokens += len(dataset[test_indices[i]]['words'])
-            i+=1
+            i += 1
         self.train_index.update(cur_indices)
         
-        print ('D Acquisition took %d seconds:' %(time.time()-tm))
+        print('D Acquisition took %d seconds:' % (time.time()-tm))
         
     def get_mnlp_mc(self, dataset, model_path, decoder, num_tokens, nsamp=100, batch_size = 50):
         
@@ -180,8 +180,8 @@ class Acquisition(object):
         new_dataset = [datapoint for j,datapoint in enumerate(dataset) if j not in self.train_index]
         new_datapoints = [j for j in range(len(dataset)) if j not in self.train_index]
         
-        data_batches = create_batches(new_dataset, batch_size = batch_size, str_words = True,
-                                      tag_padded = False)
+        data_batches = create_batches(new_dataset, batch_size=batch_size, str_words=True,
+                                      tag_padded=False)
         
         varsc_outer_list = []
         probs_outer_list = []
@@ -245,9 +245,32 @@ class Acquisition(object):
         self.train_index.update(cur_indices)
         
         print('*'*80)
-        print('MC Acquisition took %d seconds:' %(time.time()-tm))
+        print('MC Acquisition took %d seconds:' % (time.time()-tm))
         print('*'*80)
-        
+
+    def get_bald(self):
+        """
+            Bayesian Active Learning by Disagreement (BALD)
+                Mutual information between predictions and model posterior (Houlsby et al., 2011)
+                Implemented as described in Y. Gal 2017 Deep Bayesian Active Learning with Image data
+            :param probabilities: [mc samples, #classes, width, height] the Softmax probabilities for one
+            image slice, for each of the classes
+            :return: for each image pixel the BALD measure [width, height]
+            """
+        # Expected (w.r.t. p(w)) posterior Entropy of output (y) given image and D(training data)
+        # \E_{p(\omega | \mathcal{D}_{train})} [\mathbb{H}[y | x, \omega] ]
+        # inside: sum over classes (axis=1), outside: average over mc samples
+        expected_entropy = - np.mean(np.sum(probabilities * np.log(probabilities + 1e-10), axis=1), axis=0)
+        # first calculate mean softmax probabilities per pixel per class
+        expected_p = np.mean(probabilities, axis=0)
+        # compute Entropy of p(y | x, D(train)). Sum over the classes e.g. axis=0 (because we lost the original dim0
+        # when computing the mean above)
+        entropy_expected_p = - np.sum(expected_p * np.log(expected_p + 1e-10), axis=0)
+        bald_acq = entropy_expected_p - expected_entropy
+        # print('BALD_acq on first 10 points', BALD_acq[:10])
+
+        return bald_acq
+
     def obtain_data(self, data, model_path=None, model_name=None, acquire=2, method='random', num_samples=100):
         
         num_tokens = (acquire*self.tokenlen)/100
@@ -266,12 +289,12 @@ class Acquisition(object):
                     raise NotImplementedError()
             elif self.acq_mode == 'm':
                 if method == 'mnlp':
-                    self.get_mnlp_mc(data, model_path, decoder, num_tokens, nsamp = num_samples)
+                    self.get_mnlp_mc(data, model_path, decoder, num_tokens, nsamp=num_samples)
                 else:
                     raise NotImplementedError()
             elif self.acq_mode == 'b':
                 if method == 'mnlp':
-                    self.get_mnlp_bb(data, model_path, decoder, num_tokens, nsamp = num_samples)
+                    self.get_mnlp_bb(data, model_path, decoder, num_tokens, nsamp=num_samples)
                 else:
                     raise NotImplementedError()
             else:
