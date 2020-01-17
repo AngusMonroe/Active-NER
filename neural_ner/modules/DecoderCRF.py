@@ -4,6 +4,7 @@ from torch.autograd import Variable
 
 from neural_ner.util.utils import *
 
+
 class DecoderCRF(nn.Module):
 
     def __init__(self, input_dimension, tag_to_ix, input_dropout_p=0.5):
@@ -122,11 +123,11 @@ class DecoderCRF(nn.Module):
             broadcast_forward = forward_var.view(batch_size, 1, num_tags)
             tag_var = broadcast_forward + transition_scores + emit_score 
             
-            forward_var = (log_sum_exp(tag_var, dim = 2) * mask[i].view(batch_size, 1) +
+            forward_var = (log_sum_exp(tag_var, dim=2) * mask[i].view(batch_size, 1) +
                             forward_var * (1 - mask[i]).view(batch_size, 1))
             
         terminal_var = (forward_var + (self.transitions[self.tag_to_ix[STOP_TAG]]).view(1, -1))
-        alpha = log_sum_exp(terminal_var, dim = 1)
+        alpha = log_sum_exp(terminal_var, dim=1)
         
         return alpha
         
@@ -172,7 +173,7 @@ class DecoderCRF(nn.Module):
         
         return score
     
-    def decode(self, input_var, mask, usecuda=True, score_only= False):
+    def decode(self, input_var, mask, usecuda=True, score_only=False):
         
         input_var = self.dropout(input_var)
         features = self.hidden2tag(input_var)

@@ -36,7 +36,7 @@ class Trainer(object):
         best_dev_F = -1.0
         best_test_F = -1.0
         best_train_F = -1.0
-        all_F=[[0,0,0]]
+        all_F=[[0, 0, 0]]
         count = 0
         word_count = 0
         

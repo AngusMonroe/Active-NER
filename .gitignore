@@ -130,5 +130,6 @@ dmypy.json
 *.xlsx
 *.xls
 datasets/conll
+datasets/ontonotes
 wordvectors/glove.6B.300d.txt
 neural_ner/results

@@ -33,7 +33,7 @@ parser.add_argument('--reload', default=0, type=int, dest='reload',
 parser.add_argument('--checkpoint', default=".", type=str, dest='checkpoint',
                     help="Location of trained Model")
 parser.add_argument('--num_epochs', default=20, type=int, dest='num_epochs',
-                    help="Reload the last saved model")
+                    help="Epoch number for train")
 
 opt = parser.parse_args()
 

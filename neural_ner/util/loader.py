@@ -167,11 +167,11 @@ class Loader(object):
                 }
                 _pickle.dump(mappings, f)
         else:
-            mappings = _pickle.load(open(mapping_file,'rb'))
+            mappings = _pickle.load(open(mapping_file, 'rb'))
             
         return train_data, dev_data, test_data, test_train_data, mappings
         
-    def load_ontonotes(self, dataset ,parameters):
+    def load_ontonotes(self, dataset,parameters):
         
         zeros = parameters['zeros']
         lower = parameters['lower']
@@ -179,9 +179,9 @@ class Loader(object):
         pretrained = parameters['ptrnd']
         tag_scheme = parameters['tgsch']
         
-        train_path = os.path.join(dataset, 'eng.train').replace('\\', '/')
-        dev_path = os.path.join(dataset, 'eng.testa').replace('\\', '/')
-        test_path = os.path.join(dataset, 'eng.testb').replace('\\', '/')
+        train_path = os.path.join(dataset, 'all.train.train').replace('\\', '/')
+        dev_path = os.path.join(dataset, 'all.testa.dev').replace('\\', '/')
+        test_path = os.path.join(dataset, 'all.testb.test').replace('\\', '/')
         
         train_sentences = self.load_conll_sentences(train_path, lower, zeros)
         dev_sentences = self.load_conll_sentences(dev_path, lower, zeros)

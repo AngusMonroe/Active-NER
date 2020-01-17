@@ -85,7 +85,7 @@ class CNN_BiLSTM_CRF_MC(nn.Module):
         
         if score_only:
             score = self.decoder.decode(word_features, tagsmask, usecuda=usecuda, 
-                                        score_only = True)
+                                        score_only=True)
             return score
         score, tag_seq = self.decoder.decode(word_features, tagsmask, usecuda=usecuda)
         return score, tag_seq

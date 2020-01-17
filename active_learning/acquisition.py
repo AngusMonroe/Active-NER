@@ -4,9 +4,11 @@ from torch.autograd import Variable
 import numpy as np
 from collections import Counter
 import time
+from tqdm import tqdm
 from scipy import stats
 from neural_ner.util.utils import *
 import pandas as pd
+from collections import Counter
 
 
 class Acquisition(object):
@@ -32,15 +34,15 @@ class Acquisition(object):
         self.train_index.update(cur_indices)
                  
     def get_mnlp(self, dataset, model_path, decoder, num_tokens, batch_size=50):
-        
+
         model = torch.load(model_path)
         model.train(False)
         tm = time.time()
         probs = np.ones(len(dataset))*float('Inf')
-        
-        new_dataset = [datapoint for j,datapoint in enumerate(dataset) if j not in self.train_index]
+
+        new_dataset = [datapoint for j, datapoint in enumerate(dataset) if j not in self.train_index]
         new_datapoints = [j for j in range(len(dataset)) if j not in self.train_index]
-        
+
         data_batches = create_batches(new_dataset, batch_size=batch_size, str_words=True,
                                       tag_padded=False)
         probscores = []
@@ -65,7 +67,7 @@ class Acquisition(object):
             wordslen = data['wordslen']
             charslen = data['charslen']
             sort_info = data['sort_info']
-            
+
             score = model.decode(words, chars, caps, wordslen, charslen, mask, usecuda=self.usecuda,
                                  score_only=True)
             
@@ -161,7 +163,7 @@ class Acquisition(object):
         while cur_tokens < num_tokens:
             cur_indices.add(test_indices[i])
             cur_tokens += len(dataset[test_indices[i]]['words'])
-            i+=1
+            i += 1
         self.train_index.update(cur_indices)
         
         print ('*'*80)
@@ -211,7 +213,7 @@ class Acquisition(object):
             probs_list = []
             for itr in range(nsamp):
                 score, tag_seq = model.decode(words, chars, caps, wordslen, charslen, mask, 
-                                              usecuda = self.usecuda, score_only = False)
+                                              usecuda=self.usecuda, score_only = False)
                 tag_seq = [[str(tg) for tg in one_tag_seq] for one_tag_seq in tag_seq]
                 tag_seq = np.array(['_'.join(one_tag_seq) for one_tag_seq in tag_seq])
                 tag_seq_new = tag_seq[np.array(sort_info)]
@@ -232,7 +234,7 @@ class Acquisition(object):
         varsc[new_datapoints] = np.array(varsc_outer_list)
         assert len(new_datapoints) == len(probs_outer_list)
         probs[new_datapoints,:] = np.array(probs_outer_list)
-        probsmean = np.mean(probs, axis = 1)
+        probsmean = np.mean(probs, axis=1)
         test_indices = np.lexsort((probsmean, varsc))
                 
         cur_tokens=0
@@ -241,35 +243,82 @@ class Acquisition(object):
         while cur_tokens<num_tokens:
             cur_indices.add(test_indices[i])
             cur_tokens += len(dataset[test_indices[i]]['words'])
-            i+=1
+            i += 1
         self.train_index.update(cur_indices)
         
         print('*'*80)
         print('MC Acquisition took %d seconds:' % (time.time()-tm))
         print('*'*80)
 
-    def get_bald(self):
-        """
-            Bayesian Active Learning by Disagreement (BALD)
-                Mutual information between predictions and model posterior (Houlsby et al., 2011)
-                Implemented as described in Y. Gal 2017 Deep Bayesian Active Learning with Image data
-            :param probabilities: [mc samples, #classes, width, height] the Softmax probabilities for one
-            image slice, for each of the classes
-            :return: for each image pixel the BALD measure [width, height]
-            """
-        # Expected (w.r.t. p(w)) posterior Entropy of output (y) given image and D(training data)
-        # \E_{p(\omega | \mathcal{D}_{train})} [\mathbb{H}[y | x, \omega] ]
-        # inside: sum over classes (axis=1), outside: average over mc samples
-        expected_entropy = - np.mean(np.sum(probabilities * np.log(probabilities + 1e-10), axis=1), axis=0)
-        # first calculate mean softmax probabilities per pixel per class
-        expected_p = np.mean(probabilities, axis=0)
-        # compute Entropy of p(y | x, D(train)). Sum over the classes e.g. axis=0 (because we lost the original dim0
-        # when computing the mean above)
-        entropy_expected_p = - np.sum(expected_p * np.log(expected_p + 1e-10), axis=0)
-        bald_acq = entropy_expected_p - expected_entropy
-        # print('BALD_acq on first 10 points', BALD_acq[:10])
+    def get_bald(self, dataset, model_path, decoder, num_tokens, batch_size=50, M=100):
 
-        return bald_acq
+        model = torch.load(model_path)
+        model.train(True)
+        tm = time.time()
+        probs = np.ones(len(dataset))*float('Inf')
+
+        new_dataset = [datapoint for j, datapoint in enumerate(dataset) if j not in self.train_index]
+        new_datapoints = [j for j in range(len(dataset)) if j not in self.train_index]
+
+        data_batches = create_batches(new_dataset, batch_size=batch_size, str_words=True,
+                                      tag_padded=False)
+        probscores = []
+        with torch.no_grad():
+            for data in tqdm(data_batches):
+
+                words = data['words']
+                chars = data['chars']
+                caps = data['caps']
+                mask = data['tagsmask']
+
+                if self.usecuda:
+                    words = Variable(torch.LongTensor(words)).cuda()
+                    chars = Variable(torch.LongTensor(chars)).cuda()
+                    caps = Variable(torch.LongTensor(caps)).cuda()
+                    mask = Variable(torch.LongTensor(mask)).cuda()
+                else:
+                    words = Variable(torch.LongTensor(words))
+                    chars = Variable(torch.LongTensor(chars))
+                    caps = Variable(torch.LongTensor(caps))
+                    mask = Variable(torch.LongTensor(mask))
+
+                wordslen = data['wordslen']
+                charslen = data['charslen']
+                sort_info = data['sort_info']
+
+                tag_seq_metrix = []
+                for i in range(M):
+                    score, tag_seq = model.decode(words, chars, caps, wordslen, charslen, mask, usecuda=self.usecuda,
+                                        score_only=False)
+                    tag_seq_metrix.append(tag_seq)
+                metrix = []
+                for i in range(len(tag_seq_metrix[0])):
+                    row = []
+                    for j in range(len(tag_seq_metrix[0][i])):
+                        candidates = [tag_seq_metrix[k][i][j] for k in range(M)]
+                        candidates_ts = torch.from_numpy(candidates)
+                        score = 1.0 - torch.max(torch.bincount(candidates_ts.cuda()))
+                        # score = 1.0 - np.max(np.bincount(np.array(candidates))) / M
+                        row.append(score)
+                    metrix.append(sum(row) / len(row))
+                metrix = np.array(metrix)
+                assert len(metrix) == len(words)
+                probscores.extend(list(metrix[np.array(sort_info)]))
+        model.train(False)
+        assert len(new_datapoints) == len(probscores)
+        probs[new_datapoints] = np.array(probscores)
+
+        test_indices = np.argsort(probs)
+        cur_tokens = 0
+        cur_indices = set()
+        i = 0
+        while cur_tokens < num_tokens:
+            cur_indices.add(test_indices[i])
+            cur_tokens += len(dataset[test_indices[i]]['words'])
+            i += 1
+        self.train_index.update(cur_indices)
+
+        print('D Acquisition took %d seconds:' % (time.time() - tm))
 
     def obtain_data(self, data, model_path=None, model_name=None, acquire=2, method='random', num_samples=100):
         
@@ -280,6 +329,9 @@ class Acquisition(object):
         
         if method == 'random':
             self.get_random(data, num_tokens)
+        elif method == 'bald':
+            decoder = model_name.split('_')[2]
+            self.get_bald(data, model_path, decoder, num_tokens)
         else:
             decoder = model_name.split('_')[2]
             if self.acq_mode == 'd':
